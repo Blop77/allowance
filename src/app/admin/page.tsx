@@ -32,6 +32,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       <PayPalConnect
         configured={paypalConfigured()}
         connected={Boolean(getSetting("paypal_payment_token_id"))}
+        tokenId={getSetting("paypal_payment_token_id") ?? null}
+        tokenFromEnv={Boolean(process.env.PAYPAL_PAYMENT_TOKEN_ID)}
         email={getSetting("paypal_account_email") ?? null}
         connectedAt={getSetting("paypal_connected_at") ?? null}
       />

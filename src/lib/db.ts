@@ -155,8 +155,23 @@ export function db(): DatabaseSync {
   conn.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
   conn.exec(SCHEMA);
   seedIfEmpty(conn);
+  restorePayPalFromEnv(conn);
   globalForDb.allowanceDb = conn;
   return conn;
+}
+
+// Hosts with a throwaway disk (e.g. Render's free tier) lose the database on restart. If the vault token from a
+// previous connection is in the environment, reconnect with it so the admin doesn't have to approve PayPal again.
+function restorePayPalFromEnv(conn: DatabaseSync) {
+  const token = process.env.PAYPAL_PAYMENT_TOKEN_ID?.trim();
+  if (!token) return;
+  const existing = conn.prepare("SELECT value FROM settings WHERE key = 'paypal_payment_token_id'").get();
+  if (existing) return;
+  const ins = conn.prepare("INSERT INTO settings (key, value) VALUES (?, ?)");
+  ins.run("paypal_payment_token_id", token);
+  ins.run("paypal_connected_at", new Date().toISOString());
+  const email = process.env.PAYPAL_ACCOUNT_EMAIL?.trim();
+  if (email) ins.run("paypal_account_email", email);
 }
 
 function seedIfEmpty(conn: DatabaseSync) {

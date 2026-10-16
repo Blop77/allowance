@@ -102,6 +102,17 @@ There are no passwords; pick a persona on the home page.
 5. **Sam Rivera (Design lead)** → *Approvals* → **Approve & pay**.
 6. *Ledger* shows every request with its status, PayPal order ID and reason.
 
+## Deploy a live demo on Render (free)
+
+The repo includes a [Render Blueprint](render.yaml).
+
+1. On [render.com](https://render.com), sign in with GitHub, then **New → Blueprint** and pick this repository.
+2. Fill in the secrets it asks for: `GEMINI_API_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` (the others are optional; leave them empty). Click **Apply**. The first build takes a few minutes.
+3. Open the URL Render gives you (like `https://allowance-xxxx.onrender.com`), pick **Morgan Lee**, and **Connect PayPal (sandbox)** once.
+4. The admin page then shows a `PAYPAL_PAYMENT_TOKEN_ID=...` line. In Render → your service → **Environment**, set `PAYPAL_PAYMENT_TOKEN_ID` to that value (and `PAYPAL_ACCOUNT_EMAIL` to the sandbox buyer email), then save. Now PayPal stays connected even after restarts.
+
+Free-tier notes: the service sleeps after 15 minutes without visitors (the next visit takes about a minute to wake it), and the database resets on each restart, so the ledger starts empty again. Everyone shares the one Gemini free-tier quota.
+
 ### Tests
 
 ```bash

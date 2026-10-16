@@ -4,7 +4,9 @@
 
 Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) (2026). Runs entirely on the **PayPal sandbox**: no real money moves.
 
-![Allowance](docs/thumbnail.png)
+**▶ [Watch the demo video (3:19)](https://youtu.be/UdF54f_yXSk)** · **🌐 [Try the live demo](https://allowance-trqr.onrender.com)** (PayPal sandbox; the free server may take about a minute to wake up)
+
+[![Allowance demo video](docs/video-thumbnail.png)](https://youtu.be/UdF54f_yXSk)
 
 ## The problem
 

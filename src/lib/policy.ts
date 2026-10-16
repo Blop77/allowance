@@ -33,7 +33,7 @@ export function evaluatePolicy(input: PolicyInput): PolicyResult {
   if (!rule) {
     refusals.push(`"${input.category}" is not a category the company allows.`);
   } else {
-    if (rule.blocked) refusals.push(`${rule.label} purchases are blocked by company policy.`);
+    if (rule.blocked) refusals.push(`"${rule.label}" is a blocked category under company policy.`);
     if (rule.max_item_cents !== null && amountCents > rule.max_item_cents) {
       refusals.push(`${usd(amountCents)} is over the ${usd(rule.max_item_cents)} per-item cap for ${rule.label}.`);
     }

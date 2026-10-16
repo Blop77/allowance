@@ -4,7 +4,7 @@ import { ApiError as GeminiApiError } from "@google/genai";
 import { currentMember } from "@/lib/session";
 import { aiConfigError, runAgentTurn } from "@/lib/agent";
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const member = await currentMember();

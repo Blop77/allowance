@@ -6,7 +6,7 @@ import type {
   BetaToolResultBlockParam,
   BetaToolUseBlock,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import { GoogleGenAI, type Content, type Part } from "@google/genai";
+import { ApiError as GeminiApiError, GoogleGenAI, type Content, type GenerateContentParameters, type Part } from "@google/genai";
 import { z } from "zod";
 import {
   getCategoryRules,
@@ -64,6 +64,23 @@ let gemini: GoogleGenAI | null = null;
 function geminiClient() {
   gemini ??= new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   return gemini;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** The free tier allows a few requests per minute; wait out short limits instead of failing the turn. */
+async function geminiGenerate(params: GenerateContentParameters) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await geminiClient().models.generateContent(params);
+    } catch (err) {
+      const retryable = err instanceof GeminiApiError && (err.status === 429 || err.status === 503);
+      if (!retryable || attempt >= 3) throw err;
+      const hinted = /retry in ([\d.]+)s/i.exec(err.message)?.[1] ?? /"retryDelay":\s*"(\d+)s"/.exec(err.message)?.[1];
+      const waitMs = Math.min(65_000, (hinted ? Number(hinted) * 1000 : 15_000 * (attempt + 1)) + 500);
+      await sleep(waitMs);
+    }
+  }
 }
 
 // ---------- what the UI shows for each tool call ----------
@@ -152,8 +169,8 @@ function systemPrompt(member: Member): string {
   return `You are Allowance, a buying agent for ${member.name} (${member.title}) on the ${team.name} team. You find the best product for what they ask for and buy it with the company's PayPal account.
 
 How you work:
-1. Search with search_products. Compare price, store reputation, and fit; recommend one option (plus at most one alternative) in 2-4 short sentences, citing the price.
-2. Use check_policy on your recommendation and tell the teammate plainly whether it will be paid instantly, needs ${team.name}'s manager's approval, or isn't allowed (and why).
+1. Search with search_products. Compare price, store reputation, and fit; recommend one option (plus at most one alternative) in 2-4 short sentences, citing the price and one concrete reason it fits what they asked for.
+2. Use check_policy on your recommendation and tell the teammate plainly whether it will be paid instantly, needs ${team.name}'s manager's approval, or isn't allowed (and why). If it is allowed, end by asking whether you should order it.
 3. Only call place_order after the teammate explicitly confirms (e.g. "yes", "buy it", "order it"). Never buy without confirmation.
 4. If something isn't allowed, say which rule blocks it and suggest an in-policy alternative if one exists. Never try to get around a rule, for example by choosing a different category than the item really belongs to or splitting an order.
 
@@ -163,7 +180,7 @@ Company rules (enforced by the system, not by you):
 - Category caps:
 ${rules}
 
-Keep replies short and friendly. The app shows search results, policy checks and receipts as cards, so don't repeat every detail in text. Prices are in USD. This is a PayPal sandbox demo: payments use test money.`;
+When an order goes to approval, say their manager can approve it on the Approvals page; don't promise notifications, shipping dates or anything else the app doesn't do. Keep replies short and friendly. The app shows search results, policy checks and receipts as cards, so don't repeat every detail in text. Prices are in USD. This is a PayPal sandbox demo: payments use test money.`;
 }
 
 // ---------- tool execution (shared) ----------
@@ -401,7 +418,7 @@ async function geminiTurn(
   let text = "";
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const response = await geminiClient().models.generateContent({
+    const response = await geminiGenerate({
       model: geminiModel(),
       contents,
       config: {

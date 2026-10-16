@@ -44,14 +44,17 @@ All calls are in [`src/lib/paypal.ts`](src/lib/paypal.ts), against `api-m.sandbo
 
 | Tool | Use |
 |---|---|
-| **Claude (Anthropic API, `claude-opus-5-5`)** | The buying agent. It runs a tool-use loop ([`src/lib/agent.ts`](src/lib/agent.ts)) with three tools: `search_products`, `check_policy` and `place_order`. It compares options, explains its pick, tells the teammate upfront whether the purchase will be paid, need approval or be refused, and only orders after explicit confirmation. Tool inputs are schema-validated (`strict: true` + Zod). |
-| **Channel3 product search API** | `search_products` calls Channel3 for real, structured product data (title, store, price, availability, buy link) across thousands of retailers, so the agent never invents products or prices. Without a `CHANNEL3_API_KEY`, a small built-in sample catalog is used and the UI labels it as such. |
+| **Google Gemini (`gemini-2.5-flash`, free tier)**, the default | The buying agent. It runs a function-calling loop ([`src/lib/agent.ts`](src/lib/agent.ts)) with three tools: `search_products`, `check_policy` and `place_order`. It compares options, explains its pick, tells the teammate upfront whether the purchase will be paid, need approval or be refused, and only orders after explicit confirmation. Tool inputs are validated with Zod before anything runs. Short free-tier rate limits are waited out automatically. |
+| **Claude (Anthropic API, `claude-opus-5-5`)**, optional | The same agent and the same tools on Claude, with strict tool schemas. Set `AI_PROVIDER=claude` and `ANTHROPIC_API_KEY`. |
+| **Channel3 product search API**, optional | `search_products` calls Channel3 for real, structured product data (title, store, price, availability, buy link) across thousands of retailers, so the agent never invents products or prices. Without a `CHANNEL3_API_KEY`, a small built-in sample catalog is used and the UI labels it as such. |
+
+Both AI providers share one tool layer and one rules engine, so switching the model can't change what is allowed to be bought.
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  T[Teammate chat] --> A[Claude agent<br/>tool-use loop]
+  T[Teammate chat] --> A[AI agent: Gemini or Claude<br/>function-calling loop]
   A -- search_products --> C[Channel3 API]
   A -- check_policy / place_order --> P[Rules engine<br/>policy.ts]
   P -- in policy --> O[PayPal Orders v2<br/>vault_id]
@@ -64,7 +67,7 @@ flowchart LR
   L --> G[AG Grid ledger]
 ```
 
-**Stack:** Next.js 15 (App Router) + TypeScript + Tailwind, Node's built-in SQLite (`node:sqlite`, nothing native to install), `@anthropic-ai/sdk`, AG Grid Community, Zod.
+**Stack:** Next.js 15 (App Router) + TypeScript + Tailwind, Node's built-in SQLite (`node:sqlite`, nothing native to install), `@google/genai`, `@anthropic-ai/sdk`, AG Grid Community, Zod.
 
 ## Run it locally
 
@@ -80,10 +83,11 @@ npm run dev                  # http://localhost:3000
 
 ### Keys (all free)
 
-1. **PayPal sandbox app:** go to [developer.paypal.com](https://developer.paypal.com/) → Apps & Credentials → **Sandbox** → Create App. Copy the **Client ID** and **Secret** into `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. In the app's features, make sure **Save payment methods** (Vault) is enabled.
-2. **Anthropic API key:** [console.anthropic.com](https://console.anthropic.com/) → `ANTHROPIC_API_KEY`.
+1. **Gemini API key:** [aistudio.google.com/apikey](https://aistudio.google.com/apikey) → `GEMINI_API_KEY`. The free tier is enough.
+2. **PayPal sandbox app:** go to [developer.paypal.com](https://developer.paypal.com/) → Apps & Credentials → **Sandbox** → Create App. Copy the **Client ID** and **Secret** into `PAYPAL_CLIENT_ID` and `PAYPAL_CLIENT_SECRET`. In the app's features, make sure **Save payment methods** (Vault) is enabled. Use **United States** sandbox accounts (the business account behind the app and the personal buyer): PayPal doesn't support saving a PayPal account for future payments in some regions, such as India.
 3. **Channel3 (optional):** [trychannel3.com/developers](https://trychannel3.com/developers) → `CHANNEL3_API_KEY`.
-4. **Webhooks (optional, needs a public URL):** in your sandbox app, add a webhook to `<APP_URL>/api/paypal/webhook` for the `PAYMENT.CAPTURE.*` events and put its ID in `PAYPAL_WEBHOOK_ID`.
+4. **Claude (optional):** `AI_PROVIDER=claude` plus `ANTHROPIC_API_KEY` (and `ANTHROPIC_WORKSPACE_ID` if your key isn't scoped to a workspace).
+5. **Webhooks (optional, needs a public URL):** in your sandbox app, add a webhook to `<APP_URL>/api/paypal/webhook` for the `PAYMENT.CAPTURE.*` events and put its ID in `PAYPAL_WEBHOOK_ID`.
 
 The database is created and seeded automatically on first run (`./data/allowance.db`). Delete that file to reset the demo.
 
@@ -91,7 +95,7 @@ The database is created and seeded automatically on first run (`./data/allowance
 
 There are no passwords; pick a persona on the home page.
 
-1. **Morgan Lee (Finance admin)** → *Rules & PayPal* → **Connect PayPal (sandbox)**. Log in with a **sandbox personal (buyer) account** (developer dashboard → Testing Tools → Sandbox Accounts) and approve. Optionally tweak budgets and caps.
+1. **Morgan Lee (Finance admin)** → *Rules & PayPal* → **Connect PayPal (sandbox)**. Log in with a **US sandbox personal (buyer) account** (developer dashboard → Testing Tools → Sandbox Accounts) and approve. Optionally tweak budgets and caps.
 2. **Priya Shah (Design teammate)** → *Buying agent* → *"I need a 27-inch monitor for design work, under \$300"*. The agent recommends one under the \$300 threshold → reply *"yes, buy it"* → it's **paid instantly** and shows the PayPal order ID.
 3. Ask for *"an ergonomic office chair"*. Anything over \$300 goes to **approval**.
 4. Ask for *"a \$100 Amazon gift card for a client"*. It's **refused**: gift cards are blocked.

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { ApiError as GeminiApiError } from "@google/genai";
 import { currentMember } from "@/lib/session";
-import { aiConfigError, runAgentTurn } from "@/lib/agent";
+import { aiConfigError, GeminiDailyQuotaError, runAgentTurn } from "@/lib/agent";
 
 export const maxDuration = 300;
 
@@ -21,6 +21,12 @@ export async function POST(req: Request) {
     const out = await runAgentTurn(member, conversationId, message.trim().slice(0, 2000));
     return NextResponse.json(out);
   } catch (err) {
+    if (err instanceof GeminiDailyQuotaError) {
+      return NextResponse.json(
+        { error: "The AI's free daily quota is used up. It resets at midnight Pacific time; try again later." },
+        { status: 429 },
+      );
+    }
     const rateLimited =
       err instanceof Anthropic.RateLimitError || (err instanceof GeminiApiError && err.status === 429);
     if (rateLimited) {

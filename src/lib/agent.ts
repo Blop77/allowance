@@ -47,7 +47,14 @@ export function aiConfigError(): string | null {
 }
 
 const CLAUDE_MODEL = "claude-opus-5-5";
-const geminiModel = () => process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const geminiModel = () => process.env.GEMINI_MODEL || "gemini-3.5-flash";
+const geminiFallbackModel = () => process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+
+/** Thrown when a Gemini model's free daily quota is used up (waiting a minute won't help). */
+export class GeminiDailyQuotaError extends Error {}
+
+// After the main model hits its daily quota, skip it for a while instead of failing every turn first.
+let primaryExhaustedUntil = 0;
 
 let anthropic: Anthropic | null = null;
 function claudeClient() {
@@ -75,8 +82,11 @@ async function geminiGenerate(params: GenerateContentParameters) {
       return await geminiClient().models.generateContent(params);
     } catch (err) {
       const retryable = err instanceof GeminiApiError && (err.status === 429 || err.status === 503);
-      if (!retryable || attempt >= 3) throw err;
+      if (!retryable) throw err;
       const hinted = /retry in ([\d.]+)s/i.exec(err.message)?.[1] ?? /"retryDelay":\s*"(\d+)s"/.exec(err.message)?.[1];
+      const daily = /PerDay/i.test(err.message) || (hinted !== undefined && Number(hinted) > 90);
+      if (daily) throw new GeminiDailyQuotaError(`Gemini's free daily quota for ${params.model} is used up.`);
+      if (attempt >= 3) throw err;
       const waitMs = Math.min(65_000, (hinted ? Number(hinted) * 1000 : 15_000 * (attempt + 1)) + 500);
       await sleep(waitMs);
     }
@@ -416,10 +426,12 @@ async function geminiTurn(
     parametersJsonSchema: t.schema,
   }));
   let text = "";
+  // One model per turn (thought signatures are model-specific); fall back only before the turn starts.
+  let model = Date.now() < primaryExhaustedUntil ? geminiFallbackModel() : geminiModel();
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const response = await geminiGenerate({
-      model: geminiModel(),
+    const params = {
+      model,
       contents,
       config: {
         systemInstruction: systemPrompt(member),
@@ -427,7 +439,16 @@ async function geminiTurn(
         // We run the tools ourselves so every call goes through the rules engine.
         automaticFunctionCalling: { disable: true },
       },
-    });
+    };
+    let response;
+    try {
+      response = await geminiGenerate(params);
+    } catch (err) {
+      if (!(err instanceof GeminiDailyQuotaError) || round > 0 || model === geminiFallbackModel()) throw err;
+      primaryExhaustedUntil = Date.now() + 60 * 60 * 1000;
+      model = geminiFallbackModel();
+      response = await geminiGenerate({ ...params, model });
+    }
 
     const candidate = response.candidates?.[0];
     if (!candidate?.content) {

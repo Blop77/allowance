@@ -1,0 +1,34 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Render dashboard -> New -> Blueprint -> pick this repo. Values marked `sync: false` are asked for on first deploy.
+services:
+  - type: web
+    name: allowance
+    runtime: node
+    plan: free
+    # Dev dependencies (Tailwind, TypeScript) are needed for the build.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      # The free tier's disk is wiped on every restart, so the demo database lives in /tmp and is re-seeded.
+      - key: DATABASE_PATH
+        value: /tmp/allowance.db
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      # Optional. After connecting PayPal once on the live site, paste the token shown on the admin page here
+      # (and the account email) so the connection survives restarts.
+      - key: PAYPAL_PAYMENT_TOKEN_ID
+        sync: false
+      - key: PAYPAL_ACCOUNT_EMAIL
+        sync: false
+      # Optional.
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false

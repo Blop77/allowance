@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { StatusBadge } from "./StatusBadge";
 import { LogoMark } from "./Logo";
@@ -96,6 +97,7 @@ export function AgentChat({ firstName }: { firstName: string }) {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setConversationId(crypto.randomUUID());
@@ -117,6 +119,8 @@ export function AgentChat({ firstName }: { firstName: string }) {
       });
       const data = await res.json();
       setMessages((m) => [...m, res.ok ? { role: "agent", text: data.text, events: data.events } : { role: "agent", text: "", events: [{ type: "error", message: data.error }] }]);
+      // A purchase changes the team's budget; re-render the server-side sidebar.
+      if (res.ok && (data.events as AgentEvent[]).some((e) => e.type === "purchase")) router.refresh();
     } catch (err) {
       setMessages((m) => [...m, { role: "agent", text: "", events: [{ type: "error", message: String(err) }] }]);
     } finally {

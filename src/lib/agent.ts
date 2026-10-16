@@ -426,8 +426,11 @@ async function geminiTurn(
     parametersJsonSchema: t.schema,
   }));
   let text = "";
-  // One model per turn (thought signatures are model-specific); fall back only before the turn starts.
+  // One model per turn (thought signatures are model-specific). If the main model's daily quota runs out,
+  // the turn restarts on the fallback model, but only if nothing has been bought in this turn yet.
   let model = Date.now() < primaryExhaustedUntil ? geminiFallbackModel() : geminiModel();
+  const turnStart = contents.length;
+  const eventsStart = events.length;
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const params = {
@@ -444,10 +447,14 @@ async function geminiTurn(
     try {
       response = await geminiGenerate(params);
     } catch (err) {
-      if (!(err instanceof GeminiDailyQuotaError) || round > 0 || model === geminiFallbackModel()) throw err;
+      const boughtThisTurn = events.slice(eventsStart).some((e) => e.type === "purchase");
+      if (!(err instanceof GeminiDailyQuotaError) || model === geminiFallbackModel() || boughtThisTurn) throw err;
       primaryExhaustedUntil = Date.now() + 60 * 60 * 1000;
       model = geminiFallbackModel();
-      response = await geminiGenerate({ ...params, model });
+      contents.length = turnStart;
+      events.length = eventsStart;
+      round = -1;
+      continue;
     }
 
     const candidate = response.candidates?.[0];

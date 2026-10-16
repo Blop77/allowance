@@ -5,6 +5,7 @@ import { productSource } from "@/lib/products";
 import { vaultId } from "@/lib/purchasing";
 import { usd } from "@/lib/policy";
 import { AgentChat } from "@/components/AgentChat";
+import { aiProviderLabel } from "@/lib/agent";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function AgentPage() {
         </div>
         <div className="card space-y-2 p-4 text-sm">
           <p className="font-semibold">Connected services</p>
-          <p className="flex justify-between"><span className="text-muted">AI agent</span><span>Claude</span></p>
+          <p className="flex justify-between"><span className="text-muted">AI agent</span><span>{aiProviderLabel()}</span></p>
           <p className="flex justify-between"><span className="text-muted">Product search</span><span>{productSource() === "channel3" ? "Channel3" : "Sample catalog"}</span></p>
           <p className="flex justify-between"><span className="text-muted">Payments</span><span>{vaultId() ? "PayPal (connected)" : "PayPal (not connected)"}</span></p>
         </div>

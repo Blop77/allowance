@@ -115,6 +115,8 @@ The repo includes a [Render Blueprint](render.yaml).
 
 Free-tier notes: the service sleeps after 15 minutes without visitors (the next visit takes about a minute to wake it), and the database resets on each restart, so the ledger starts empty again. Everyone shares the one Gemini free-tier quota.
 
+The hosted demo is shared, so the home page and the admin page have a **Reset demo** button: it puts budgets, rules and the ledger back to their starting state and keeps PayPal connected. When the PayPal connection comes from `PAYPAL_PAYMENT_TOKEN_ID`, it can't be disconnected from the app, so one visitor can't break payments for everyone.
+
 ### Tests
 
 ```bash

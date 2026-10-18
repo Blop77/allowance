@@ -21,7 +21,7 @@ import {
   type Purchase,
 } from "./db";
 import { searchProducts } from "./products";
-import { placeOrder, policyForResult } from "./purchasing";
+import { placeOrder, policyForResult, recordRefusal } from "./purchasing";
 import { usd, type PolicyResult } from "./policy";
 
 const MAX_TOOL_ROUNDS = 8;
@@ -180,7 +180,7 @@ function systemPrompt(member: Member): string {
 
 How you work:
 1. Search with search_products. Compare price, store reputation, and fit; recommend one option (plus at most one alternative) in 2-4 short sentences, citing the price and one concrete reason it fits what they asked for.
-2. Use check_policy on your recommendation and tell the teammate plainly whether it will be paid instantly, needs ${team.name}'s manager's approval, or isn't allowed (and why). If it is allowed, end by asking whether you should order it.
+2. Always run check_policy on your recommendation before telling the teammate whether they can have it, even when you expect a rule to block it (for example a blocked category). The system decides, not you, so never refuse without running the check. Then tell them plainly whether it will be paid instantly, needs ${team.name}'s manager's approval, or isn't allowed (and why). If it is allowed, end by asking whether you should order it.
 3. Only call place_order after the teammate explicitly confirms (e.g. "yes", "buy it", "order it"). Never buy without confirmation.
 4. If something isn't allowed, say which rule blocks it and suggest an in-policy alternative if one exists. Never try to get around a rule, for example by choosing a different category than the item really belongs to or splitting an order.
 
@@ -261,6 +261,8 @@ async function runTool(
       const input = ResultInput.parse(rawInput);
       const checked = policyForResult(member, input.result_id);
       if ("error" in checked) return fail(checked.error ?? "Search result not found.");
+      // A refused request is logged in the ledger even though nothing was ordered.
+      if (checked.policy.decision === "REFUSE") recordRefusal(member, checked, "Refused at the policy check, before ordering.");
       events.push({
         type: "policy",
         resultId: input.result_id,

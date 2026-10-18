@@ -177,7 +177,29 @@ function restorePayPalFromEnv(conn: DatabaseSync) {
 function seedIfEmpty(conn: DatabaseSync) {
   const row = conn.prepare("SELECT COUNT(*) AS n FROM teams").get() as { n: number };
   if (row.n > 0) return;
+  seedDefaults(conn);
+}
 
+/**
+ * Puts the shared demo back to its starting state: default teams, members and rules, and an empty
+ * ledger. The PayPal connection (settings) is kept, so payments keep working.
+ */
+export function resetDemo() {
+  const conn = db();
+  conn.exec("BEGIN");
+  try {
+    for (const table of ["purchases", "search_results", "conversations", "webhook_events", "members", "teams", "category_rules"]) {
+      conn.exec(`DELETE FROM ${table}`);
+    }
+    seedDefaults(conn);
+    conn.exec("COMMIT");
+  } catch (err) {
+    conn.exec("ROLLBACK");
+    throw err;
+  }
+}
+
+function seedDefaults(conn: DatabaseSync) {
   const teams: Team[] = [
     { id: "design", name: "Design", monthly_budget_cents: 200000, approval_threshold_cents: 30000 },
     { id: "engineering", name: "Engineering", monthly_budget_cents: 500000, approval_threshold_cents: 50000 },
@@ -304,6 +326,11 @@ export function getPurchases(filter?: { teamId?: string; status?: PurchaseStatus
 
 export function getPurchase(id: string): Purchase | undefined {
   return row<Purchase>("SELECT * FROM purchases WHERE id = ?", id);
+}
+
+/** The refusal already recorded for a search result, if any (a result is only logged as refused once). */
+export function getRefusalForResult(searchResultId: string): Purchase | undefined {
+  return row<Purchase>("SELECT * FROM purchases WHERE search_result_id = ? AND status = 'REFUSED'", searchResultId);
 }
 
 export function insertPurchase(p: Purchase) {

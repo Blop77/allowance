@@ -33,6 +33,18 @@ function RichText({ text }: { text: string }) {
   );
 }
 
+// Store image servers often refuse hotlinked requests that carry a Referer; if an image still fails, show the placeholder.
+function ProductThumb({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (!src || failed) {
+    return <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-lg">🛒</span>;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="h-12 w-12 shrink-0 rounded-md bg-slate-100 object-cover" />
+  );
+}
+
 function EventCard({ e }: { e: AgentEvent }) {
   if (e.type === "search") {
     return (
@@ -43,12 +55,7 @@ function EventCard({ e }: { e: AgentEvent }) {
         <div className="grid gap-2 sm:grid-cols-2">
           {e.results.slice(0, 4).map((r) => (
             <a key={r.id} href={r.url} target="_blank" rel="noreferrer" className="flex gap-3 rounded-lg border border-line p-2 hover:bg-slate-50">
-              {r.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={r.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
-              ) : (
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-slate-100 text-lg">🛒</span>
-              )}
+              <ProductThumb src={r.imageUrl} />
               <span className="min-w-0 text-sm">
                 <span className="line-clamp-2 font-medium">{r.title}</span>
                 <span className="text-muted">{r.merchant} · <strong className="text-ink">{r.price}</strong></span>

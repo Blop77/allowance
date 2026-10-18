@@ -1,6 +1,7 @@
 import { getMembers, getTeams } from "@/lib/db";
 import { PersonaPicker } from "@/components/PersonaPicker";
 import { LogoMark } from "@/components/Logo";
+import { ResetDemoButton } from "@/components/ResetDemoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,10 @@ export default function Home() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Try it as</h2>
         <p className="mt-1 text-sm text-muted">This demo has no passwords. Pick a persona; you can switch any time from the top-right.</p>
         <PersonaPicker members={members} />
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4 text-sm text-muted">
+          <span>This demo is shared. If another tester used up a budget or changed the rules, reset it.</span>
+          <ResetDemoButton />
+        </div>
       </section>
       <ol className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
         {[

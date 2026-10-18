@@ -3,6 +3,7 @@ import {
   committedThisMonthCents,
   getCategoryRule,
   getPurchase,
+  getRefusalForResult,
   getSearchResult,
   getSetting,
   getTeam,
@@ -37,12 +38,10 @@ export function vaultId(): string | undefined {
   return getSetting("paypal_payment_token_id");
 }
 
-export async function placeOrder(member: Member, resultId: string, justification: string) {
-  const checked = policyForResult(member, resultId);
-  if ("error" in checked) return { error: checked.error };
-  const { result, team, policy } = checked;
+type Checked = Exclude<ReturnType<typeof policyForResult>, { error: string }>;
 
-  const base: Purchase = {
+function newPurchase(member: Member, { result, team, policy }: Checked, justification: string): Purchase {
+  return {
     id: newId("pur"),
     member_id: member.id,
     team_id: team.id,
@@ -64,11 +63,26 @@ export async function placeOrder(member: Member, resultId: string, justification
     created_at: now(),
     updated_at: now(),
   };
+}
+
+/** Logs a refused request in the ledger, once per search result, so refusals are visible to finance. */
+export function recordRefusal(member: Member, checked: Checked, justification: string): Purchase {
+  const existing = getRefusalForResult(checked.result.id);
+  if (existing) return existing;
+  const purchase = { ...newPurchase(member, checked, justification), status: "REFUSED" as const, decided_by: "policy" };
+  insertPurchase(purchase);
+  return getPurchase(purchase.id)!;
+}
+
+export async function placeOrder(member: Member, resultId: string, justification: string) {
+  const checked = policyForResult(member, resultId);
+  if ("error" in checked) return { error: checked.error };
+  const { team, policy } = checked;
 
   if (policy.decision === "REFUSE") {
-    insertPurchase({ ...base, status: "REFUSED", decided_by: "policy" });
-    return { purchase: getPurchase(base.id)!, policy };
+    return { purchase: recordRefusal(member, checked, justification), policy };
   }
+  const base = newPurchase(member, checked, justification);
   if (policy.decision === "NEEDS_APPROVAL") {
     insertPurchase({ ...base, status: "PENDING_APPROVAL" });
     return { purchase: getPurchase(base.id)!, policy };

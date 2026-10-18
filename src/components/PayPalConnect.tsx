@@ -42,7 +42,11 @@ export function PayPalConnect(props: {
           </p>
         )}
       </div>
-      {props.connected ? (
+      {props.connected && props.tokenFromEnv ? (
+        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200" title="Set on the server so one visitor can't disconnect it for everyone.">
+          Kept connected for this demo
+        </span>
+      ) : props.connected ? (
         <button className="btn btn-ghost" onClick={disconnect} disabled={busy}>Disconnect</button>
       ) : (
         <a className={`btn btn-primary ${props.configured ? "" : "pointer-events-none opacity-50"}`} href="/api/paypal/connect">

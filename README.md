@@ -115,6 +115,8 @@ The repo includes a [Render Blueprint](render.yaml).
 
 Free-tier notes: the service sleeps after 15 minutes without visitors (the next visit takes about a minute to wake it), and the database resets on each restart, so the ledger starts empty again. Everyone shares the one Gemini free-tier quota.
 
+A GitHub Actions workflow ([`keep-awake.yml`](.github/workflows/keep-awake.yml)) loads the demo every 5 minutes so it doesn't fall asleep during judging. That keeps the service running all month (about 744 of the workspace's 750 free hours), so disable the workflow under **Actions** when it's no longer needed.
+
 The hosted demo is shared, so the home page and the admin page have a **Reset demo** button: it puts budgets, rules and the ledger back to their starting state and keeps PayPal connected. When the PayPal connection comes from `PAYPAL_PAYMENT_TOKEN_ID`, it can't be disconnected from the app, so one visitor can't break payments for everyone.
 
 ### Tests

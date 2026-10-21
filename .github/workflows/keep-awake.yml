@@ -1,0 +1,23 @@
+# Render's free plan puts the demo to sleep after 15 minutes without visitors, so the first visit
+# then takes about a minute. Pinging every 5 minutes keeps it awake for judges.
+# It keeps the service running all month (about 744 of the workspace's 750 free hours), so disable
+# this workflow (Actions -> Keep the live demo awake -> Disable workflow) once judging is over.
+name: Keep the live demo awake
+
+on:
+  schedule:
+    - cron: "3-58/5 * * * *" # every 5 minutes, off the busy top of the hour
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping https://allowance-trqr.onrender.com
+        run: >
+          curl --fail --silent --show-error --retry 3 --retry-delay 20 --max-time 120
+          -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n"
+          https://allowance-trqr.onrender.com/

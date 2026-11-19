@@ -6,6 +6,8 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) (202
 
 **▶ [Watch the demo video (3:20)](https://youtu.be/2cGTZHkmjGI)** · **🌐 [Try the live demo](https://allowance-trqr.onrender.com)** (PayPal sandbox; the free server may take about a minute to wake up)
 
+> **Live demo status (Nov 19, 2026):** the free hosting plan's monthly hours ran out, so the live demo is paused until **December 1**, when they reset. Until then, the [demo video](https://youtu.be/2cGTZHkmjGI) shows the full flow, and you can run it yourself with the steps in [Run it locally](#run-it-locally).
+
 [![Allowance demo video](docs/video-thumbnail.png)](https://youtu.be/2cGTZHkmjGI)
 
 ## The problem

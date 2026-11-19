@@ -5,8 +5,9 @@
 name: Keep the live demo awake
 
 on:
-  schedule:
-    - cron: "3-58/5 * * * *" # every 5 minutes, off the busy top of the hour
+  # The 5-minute schedule is off: keeping the demo awake all month used up the Render workspace's
+  # 750 free hours (shared with other services), which suspended every service on Nov 17, 2026.
+  # To turn it back on, restore:  schedule: - cron: "3-58/5 * * * *"
   workflow_dispatch:
 
 permissions: {}
